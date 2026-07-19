@@ -90,6 +90,15 @@ async def get_medrxiv_metadata(doi: str) -> Dict[str, Any]:
         return {"error": f"An error occurred while fetching metadata: {str(e)}"}
 
 if __name__ == "__main__":
+    import os
     logging.info("Starting medRxiv MCP server")
-    # Initialize and run the server
-    mcp.run(transport='stdio')
+    # Native transport switch (fork addition): MCP_TRANSPORT=http runs a single
+    # long-lived streamable-HTTP server (one process, no per-session supergateway
+    # child spawn) on MCP_HOST:MCP_PORT at /mcp; default stdio for per-worker use.
+    _transport = os.getenv("MCP_TRANSPORT", "stdio")
+    if _transport in ("http", "streamable-http"):
+        mcp.settings.host = os.getenv("MCP_HOST", "127.0.0.1")
+        mcp.settings.port = int(os.getenv("MCP_PORT", "8000"))
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run(transport="stdio")
